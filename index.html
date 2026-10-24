@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIRO Obstplantage – 2.5D Isometrischer Prototyp (PixiJS)</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- PixiJS v7: Local fallback with CDN mirror -->
+  <script src="pixi.min.js"></script>
+  <script>
+    if (!window.PIXI) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"><\/script>');
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-gradient-top: #bbf2f6;
+      --bg-gradient-mid: #dff6db;
+      --bg-gradient-bottom: #97d488;
+      --panel-bg: rgba(255, 255, 255, 0.84);
+      --panel-border: rgba(255, 255, 255, 0.65);
+      --panel-shadow: 0 16px 40px rgba(22, 60, 30, 0.12);
+      --text-main: #1e3a24;
+      --text-muted: #537159;
+      --primary: #2d7a42;
+      --primary-hover: #236335;
+      --accent: #d84339;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(180deg, var(--bg-gradient-top) 0%, var(--bg-gradient-mid) 60%, var(--bg-gradient-bottom) 100%);
+      color: var(--text-main);
+    }
+
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Modern Glassmorphic Top Overlay */
+    .top-bar {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 16px 22px;
+      box-shadow: var(--panel-shadow);
+      max-width: 450px;
+      pointer-events: auto;
+    }
+
+    .badge-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: rgba(45, 122, 66, 0.12);
+      color: var(--primary);
+    }
+
+    .badge-pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2ebd59;
+      box-shadow: 0 0 8px #2ebd59;
+      animation: pulse 1.6s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.5; }
+    }
+
+    .top-bar h1 {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .top-bar p {
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+
+    /* Right Control Dock */
+    .control-dock {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      z-index: 10;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 18px 22px;
+      box-shadow: var(--panel-shadow);
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      pointer-events: auto;
+    }
+
+    .dock-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .wind-presets {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .btn-preset {
+      background: #f0f6f1;
+      border: 1px solid rgba(45, 122, 66, 0.2);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .btn-preset:hover {
+      background: rgba(45, 122, 66, 0.15);
+      border-color: var(--primary);
+    }
+
+    .btn-preset.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(45, 122, 66, 0.3);
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    input[type=range] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #d4e5d6;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: transform 0.1s ease;
+    }
+
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Tree Inspector Card (Bottom Left) */
+    .tree-inspector {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      z-index: 10;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 16px 20px;
+      box-shadow: var(--panel-shadow);
+      min-width: 290px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .inspector-title {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      row-gap: 4px;
+      column-gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .inspector-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .action-btn {
+      margin-top: 4px;
+      background: #ffffff;
+      border: 1px solid #c7ddcc;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* Telemetry Pill (Bottom Right) */
+    .telemetry-pill {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      z-index: 10;
+      background: rgba(20, 36, 24, 0.88);
+      backdrop-filter: blur(10px);
+      color: #bdf5cb;
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+
+    .hint-toast {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      pointer-events: none;
+      animation: floatHint 3s ease-in-out infinite;
+    }
+
+    @keyframes floatHint {
+      0%, 100% { transform: translate(-50%, 0); }
+      50% { transform: translate(-50%, -4px); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fullscreen WebGL / Pixi.js Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- Top Info Panel -->
+  <div class="top-bar">
+    <div class="badge-row">
+      <span class="badge"><span class="badge-pulse"></span> MIRO Forschung • PoC</span>
+      <span class="badge" style="background: rgba(216, 67, 57, 0.1); color: #d84339;">PixiJS 2.5D</span>
+    </div>
+    <h1>🍎 Apfelplantage-Prototyp</h1>
+    <p>
+      2.5-dimensionale, isometrische Perspektive einer mitteldeutschen Obstbau-Parzelle. Die Bäume wiegen sich durch harmonische Windwellen rhythmisch im Wind.
+    </p>
+  </div>
+
+  <!-- Control Dock -->
+  <div class="control-dock">
+    <div class="dock-section-title">Windsimulation & Steuerung</div>
+    <div class="wind-presets">
+      <button class="btn-preset" data-preset="gentle">Sanfte Brise</button>
+      <button class="btn-preset active" data-preset="moderate">Frischer Wind</button>
+      <button class="btn-preset" data-preset="gale">Stürmisch</button>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span>Windstärke (Amplitude)</span>
+        <span id="strength-val">1.2x</span>
+      </div>
+      <input type="range" id="slider-strength" min="0.1" max="3.0" step="0.1" value="1.2">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span>Wellenfrequenz (Rhythmus)</span>
+        <span id="speed-val">1.0x</span>
+      </div>
+      <input type="range" id="slider-speed" min="0.3" max="2.5" step="0.1" value="1.0">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span>Wellenlänge (Phasenverzögerung)</span>
+        <span id="wave-val">Normal</span>
+      </div>
+      <input type="range" id="slider-wave" min="0.1" max="1.0" step="0.05" value="0.35">
+    </div>
+  </div>
+
+  <!-- Tree Inspector Popup -->
+  <div class="tree-inspector" id="tree-inspector">
+    <div class="inspector-title">
+      <span>🌳</span> <span id="insp-name">Parzelle #3 – Roter Elstar</span>
+    </div>
+    <div class="inspector-grid">
+      <span>Position:</span> <span class="inspector-val" id="insp-pos">Gitter [Spalte: 2, Reihe: 3]</span>
+      <span>Alter:</span> <span class="inspector-val" id="insp-age">6 Jahre (Ertragsphase)</span>
+      <span>Behang:</span> <span class="inspector-val" id="insp-apples">12 reife Äpfel</span>
+      <span>Windelastizität:</span> <span class="inspector-val" id="insp-sway">100% aktiv</span>
+    </div>
+    <button class="action-btn" id="btn-shake">🍃 Schütteln (Apfelfall)</button>
+  </div>
+
+  <!-- Floating Hint -->
+  <div class="hint-toast">💡 Tipp: Klicken Sie auf einen beliebigen Baum zur Inspektion und zum Schütteln!</div>
+
+  <!-- Telemetry Overlay -->
+  <div class="telemetry-pill">
+    <span>RENDER: <b id="fps-counter">60 FPS</b></span>
+    <span>OBJEKTE: <b id="obj-counter">18 Bäume • 36 Kacheln</b></span>
+    <span>WIND: <b id="telemetry-wind">3.4 m/s (NW)</b></span>
+  </div>
+
+  <script>
+    /**
+     * MIRO 2.5D Isometric Apple Orchard Prototype
+     * Built with Pixi.js v7
+     */
+
+    // Configuration & Simulation Constants
+    const ISO_CONFIG = {
+      tileWidth: 104,      // Isometric diamond width
+      tileHeight: 52,      // Isometric diamond height (2:1 projection)
+      gridCols: 6,         // Columns in orchard
+      gridRows: 6,         // Rows in orchard
+      treeDensity: 0.75    // Tree occupancy rate
+    };
+
+    // Wind Dynamics State
+    const windState = {
+      baseSpeed: 1.0,
+      amplitude: 1.2,
+      phaseFactor: 0.35,
+      gustTime: 0,
+      globalTime: 0
+    };
+
+    // Initialize Pixi Application
+    const container = document.getElementById('canvas-container');
+    const app = new PIXI.Application({
+      resizeTo: window,
+      antialias: true,
+      backgroundAlpha: 0,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true
+    });
+    container.appendChild(app.view);
+
+    // Root containers for depth management
+    const worldContainer = new PIXI.Container();
+    const terrainContainer = new PIXI.Container();
+    const shadowContainer = new PIXI.Container();
+    const treeContainer = new PIXI.Container();
+    const particleContainer = new PIXI.Container();
+    const fxContainer = new PIXI.Container();
+
+    worldContainer.addChild(terrainContainer);
+    worldContainer.addChild(shadowContainer);
+    worldContainer.addChild(treeContainer);
+    worldContainer.addChild(particleContainer);
+    worldContainer.addChild(fxContainer);
+    app.stage.addChild(worldContainer);
+
+    // Enable z-index sorting on tree layer
+    treeContainer.sortableChildren = true;
+
+    // Coordinate conversion: Isometric Grid to Screen Space
+    function isoToScreen(col, row) {
+      const x = (col - row) * (ISO_CONFIG.tileWidth / 2);
+      const y = (col + row) * (ISO_CONFIG.tileHeight / 2);
+      return { x, y };
+    }
+
+    // Center world in viewport
+    function centerWorld() {
+      const centerX = app.screen.width / 2;
+      const centerY = (app.screen.height / 2) - ((ISO_CONFIG.gridCols + ISO_CONFIG.gridRows) * ISO_CONFIG.tileHeight / 4) + 60;
+      worldContainer.position.set(centerX, centerY);
+    }
+    window.addEventListener('resize', centerWorld);
+    centerWorld();
+
+    // ==========================================
+    // PROCEDURAL TEXTURE GENERATION
+    // ==========================================
+
+    // 1. Procedural Isometric Grass & Orchard Soil Tile
+    function createIsometricTile(col, row) {
+      const g = new PIXI.Graphics();
+      const hw = ISO_CONFIG.tileWidth / 2;
+      const hh = ISO_CONFIG.tileHeight / 2;
+
+      // Subtle variation in orchard grass tone
+      const isRowAlley = (col % 2 === 0);
+      const baseColor = isRowAlley ? 0x69b35a : 0x75bf64;
+      const edgeColor = 0x4f9442;
+
+      // Diamond ground polygon
+      g.beginFill(baseColor);
+      g.lineStyle(1, edgeColor, 0.45);
+      g.moveTo(0, -hh);
+      g.lineTo(hw, 0);
+      g.lineTo(0, hh);
+      g.lineTo(-hw, 0);
+      g.closePath();
+      g.endFill();
+
+      // Precision Irrigation Drip Line along fruit rows (MIRO Theme)
+      if (!isRowAlley) {
+        g.lineStyle(1.5, 0x3d4f3b, 0.55);
+        g.moveTo(-hw * 0.7, -hh * 0.7);
+        g.lineTo(hw * 0.7, hh * 0.7);
+
+        // Small soil mulch track underneath fruit trees
+        g.beginFill(0x564736, 0.35);
+        g.drawEllipse(0, 0, hw * 0.45, hh * 0.45);
+        g.endFill();
+      }
+
+      // Small grass tufts / daisies
+      if ((col * 3 + row * 7) % 5 === 0) {
+        g.beginFill(0x8ee075, 0.7);
+        g.drawCircle(-8, -4, 1.8);
+        g.drawCircle(10, 2, 1.5);
+        g.endFill();
+      }
+
+      const screenPos = isoToScreen(col, row);
+      g.position.set(screenPos.x, screenPos.y);
+      return g;
+    }
+
+    // 2. Procedural Fallen Apples on Grass
+    function createFallenApple() {
+      const g = new PIXI.Graphics();
+      g.beginFill(0xd32f2f);
+      g.drawCircle(0, 0, 3.2);
+      g.endFill();
+      // Highlight
+      g.beginFill(0xff8a80);
+      g.drawCircle(-1, -1, 1.2);
+      g.endFill();
+      return g;
+    }
+
+    // 3. Tree Class with Multi-Layered Wind Physics
+    class AppleTree {
+      constructor(col, row, id) {
+        this.col = col;
+        this.row = row;
+        this.id = id;
+        this.selected = false;
+        this.shakeTimer = 0;
+        this.treeVariety = ['Roter Elstar', 'Jonagold', 'Gala Galaxy', 'Schöner aus Boskoop'][ (col + row) % 4 ];
+        this.appleCount = 7 + ((col * 2 + row * 3) % 6);
+
+        // Position in screen
+        const screenPos = isoToScreen(col, row);
+        this.baseX = screenPos.x;
+        this.baseY = screenPos.y;
+
+        // Spatial phase delay based on coordinates (wind travels diagonally across rows)
+        this.spatialPhase = (col * 0.42 + row * 0.28);
+
+        // Create Container Hierarchy
+        this.root = new PIXI.Container();
+        this.root.position.set(this.baseX, this.baseY);
+        this.root.zIndex = (col + row) * 100 + 10; // Isometric depth sorting
+
+        // Shadow container (sits flat on ground, slightly deforms with wind)
+        this.shadow = new PIXI.Graphics();
+        this.buildShadow();
+        shadowContainer.addChild(this.shadow);
+
+        // Tree Pivot Container (pivot at trunk base)
+        this.treeBody = new PIXI.Container();
+        this.treeBody.position.set(0, 0);
+
+        // Foliage Container (separate to allow extra secondary flex/sway)
+        this.foliageContainer = new PIXI.Container();
+        this.foliageContainer.position.set(0, -56); // Canopy center offset
+
+        // Build Visual Elements
+        this.buildTrunk();
+        this.buildCanopy();
+        this.buildApples();
+
+        this.treeBody.addChild(this.foliageContainer);
+        this.root.addChild(this.treeBody);
+        treeContainer.addChild(this.root);
+
+        // Interactivity
+        this.root.eventMode = 'static';
+        this.root.cursor = 'pointer';
+        this.root.on('pointerdown', (e) => {
+          e.stopPropagation();
+          selectTree(this);
+          this.triggerShake();
+        });
+      }
+
+      buildShadow() {
+        this.shadow.clear();
+        this.shadow.beginFill(0x1a3318, 0.38);
+        this.shadow.drawEllipse(0, 0, 26, 12);
+        this.shadow.endFill();
+        this.shadow.position.set(this.baseX, this.baseY + 4);
+      }
+
+      buildTrunk() {
+        const trunk = new PIXI.Graphics();
+        
+        // Dark soil contact roots
+        trunk.beginFill(0x422a1d);
+        trunk.moveTo(-7, 0);
+        trunk.lineTo(-3, -12);
+        trunk.lineTo(3, -12);
+        trunk.lineTo(7, 0);
+        trunk.closePath();
+        trunk.endFill();
+
+        // Sturdy central trunk with subtle bark color
+        trunk.beginFill(0x5a3d28);
+        trunk.lineStyle(1, 0x3d2719, 0.6);
+        trunk.moveTo(-4, -10);
+        trunk.lineTo(-3, -56);
+        trunk.lineTo(3, -56);
+        trunk.lineTo(4, -10);
+        trunk.closePath();
+        trunk.endFill();
+
+        // Branches spreading out into canopy
+        trunk.lineStyle(3, 0x4a3220, 0.9);
+        trunk.moveTo(0, -48);
+        trunk.lineTo(-14, -64);
+        trunk.moveTo(0, -50);
+        trunk.lineTo(16, -66);
+        trunk.moveTo(0, -44);
+        trunk.lineTo(4, -68);
+
+        this.treeBody.addChild(trunk);
+      }
+
+      buildCanopy() {
+        // Multi-layered lush canopy for rich 2.5D depth
+        const g = new PIXI.Graphics();
+
+        // 1. Shadow back leaves
+        g.beginFill(0x235227, 0.95);
+        g.drawCircle(-12, 4, 18);
+        g.drawCircle(14, 2, 19);
+        g.drawCircle(0, 10, 17);
+        g.endFill();
+
+        // 2. Main mid-tone canopy lobes
+        g.beginFill(0x387d3a);
+        g.drawCircle(-16, -8, 20);
+        g.drawCircle(16, -10, 21);
+        g.drawCircle(0, -18, 23);
+        g.drawCircle(-8, 2, 19);
+        g.drawCircle(8, 0, 20);
+        g.endFill();
+
+        // 3. Sunny highlights on top
+        g.beginFill(0x5ca850);
+        g.drawCircle(-10, -22, 14);
+        g.drawCircle(10, -24, 13);
+        g.drawCircle(0, -28, 15);
+        g.drawCircle(6, -14, 12);
+        g.endFill();
+
+        // 4. Subtle leaf cluster texture dots
+        g.beginFill(0x7ecf70, 0.8);
+        g.drawCircle(-4, -26, 4);
+        g.drawCircle(12, -18, 3.5);
+        g.drawCircle(-14, -12, 3);
+        g.endFill();
+
+        this.foliageContainer.addChild(g);
+      }
+
+      buildApples() {
+        this.applesGroup = new PIXI.Container();
+        const applePositions = [
+          { x: -16, y: -4 }, { x: 14, y: -6 }, { x: -8, y: -18 },
+          { x: 12, y: -20 }, { x: -22, y: 6 }, { x: 4, y: 4 },
+          { x: 20, y: 8 }, { x: -4, y: 12 }, { x: 18, y: -16 },
+          { x: -14, y: -24 }
+        ];
+
+        this.apples = [];
+        const count = Math.min(this.appleCount, applePositions.length);
+
+        for (let i = 0; i < count; i++) {
+          const pos = applePositions[i];
+          const apple = new PIXI.Graphics();
+          
+          // Apple Body (Glossy Red with blush)
+          apple.beginFill(0xd32323);
+          apple.drawCircle(0, 0, 3.8);
+          apple.endFill();
+
+          // Yellow/orange warmth
+          apple.beginFill(0xf9a825, 0.7);
+          apple.drawCircle(1, 1, 2.2);
+          apple.endFill();
+
+          // Sun Specular Highlight
+          apple.beginFill(0xffffff, 0.85);
+          apple.drawCircle(-1.2, -1.2, 1.1);
+          apple.endFill();
+
+          apple.position.set(pos.x, pos.y);
+          apple.originalPos = { ...pos };
+          apple.swayOffset = (i * 0.7);
+          
+          this.applesGroup.addChild(apple);
+          this.apples.push(apple);
+        }
+
+        this.foliageContainer.addChild(this.applesGroup);
+      }
+
+      triggerShake() {
+        this.shakeTimer = 1.0;
+        spawnFallingApple(this.baseX, this.baseY - 50);
+      }
+
+      // Physics update tick for wind sway
+      update(t, delta) {
+        // Combined wind math:
+        // Periodic base breeze + Spatial Phase Travel + Intermittent Gusts
+        const phase = t * windState.baseSpeed * 2.5 + this.spatialPhase * (windState.phaseFactor * 10);
+        
+        // Natural wind has multiple harmonic frequencies
+        const harmonic1 = Math.sin(phase);
+        const harmonic2 = Math.sin(phase * 1.6 + 0.8) * 0.35;
+        const windWave = (harmonic1 + harmonic2);
+
+        // Dynamic gust intensity
+        const gust = Math.max(0, Math.sin(t * 0.65 + this.spatialPhase * 0.4)) * 0.45;
+        const totalForce = (windWave + gust) * windState.amplitude;
+
+        // Shake override on click
+        let shakeOffset = 0;
+        if (this.shakeTimer > 0) {
+          this.shakeTimer -= delta * 0.05;
+          shakeOffset = Math.sin(this.shakeTimer * 30) * (this.shakeTimer * 0.22);
+        }
+
+        // 1. Trunk Flex & Skew
+        // The tree bends at trunk base: x-skew is physically accurate for wind pressure
+        this.treeBody.skew.x = (totalForce * 0.05) + shakeOffset;
+        this.treeBody.rotation = (totalForce * 0.02) + (shakeOffset * 0.5);
+
+        // 2. Foliage Elastic Secondary Motion (Canopy lags and sways further)
+        this.foliageContainer.rotation = (totalForce * 0.04) + (shakeOffset * 0.8);
+        this.foliageContainer.position.x = (totalForce * 3.5);
+        this.foliageContainer.scale.y = 1.0 - (Math.abs(totalForce) * 0.02); // Elastic squash/stretch
+
+        // 3. Apples Micro-Dangling Motion
+        for (let apple of this.apples) {
+          const appleWave = Math.sin(phase + apple.swayOffset) * totalForce;
+          apple.x = apple.originalPos.x + appleWave * 1.4;
+          apple.y = apple.originalPos.y + Math.abs(appleWave) * 0.5;
+        }
+
+        // 4. Ground Shadow sync
+        this.shadow.scale.x = 1.0 + (totalForce * 0.12);
+        this.shadow.position.x = this.baseX + (totalForce * 2.5);
+      }
+    }
+
+    // ==========================================
+    // FLOATING WIND LEAF PARTICLES & FALLING APPLES
+    // ==========================================
+    const leaves = [];
+    const fallingApples = [];
+
+    function initLeaves() {
+      for (let i = 0; i < 22; i++) {
+        const leaf = new PIXI.Graphics();
+        leaf.beginFill(0x66bb6a, 0.85);
+        leaf.drawEllipse(0, 0, 4.5, 2.2);
+        leaf.endFill();
+
+        leaf.x = (Math.random() - 0.5) * 800;
+        leaf.y = (Math.random() - 0.5) * 600 - 80;
+        leaf.speedX = 1.6 + Math.random() * 2.2;
+        leaf.speedY = 0.8 + Math.random() * 1.2;
+        leaf.spin = (Math.random() - 0.5) * 0.1;
+        leaf.alpha = 0.4 + Math.random() * 0.5;
+
+        particleContainer.addChild(leaf);
+        leaves.push(leaf);
+      }
+    }
+
+    function updateLeaves(t) {
+      const speedMultiplier = windState.baseSpeed * (0.8 + windState.amplitude * 0.5);
+      for (let leaf of leaves) {
+        leaf.x += leaf.speedX * speedMultiplier;
+        leaf.y += leaf.speedY * speedMultiplier + Math.sin(t * 3 + leaf.x * 0.02) * 0.6;
+        leaf.rotation += leaf.spin;
+
+        // Reset if drifted outside viewport
+        if (leaf.x > 500) leaf.x = -500;
+        if (leaf.y > 400) leaf.y = -350;
+      }
+    }
+
+    function spawnFallingApple(startX, startY) {
+      const apple = new PIXI.Graphics();
+      apple.beginFill(0xd32323);
+      apple.drawCircle(0, 0, 3.8);
+      apple.endFill();
+      apple.beginFill(0xffffff, 0.8);
+      apple.drawCircle(-1, -1, 1);
+      apple.endFill();
+
+      apple.x = startX;
+      apple.y = startY;
+      apple.vy = 0;
+      apple.targetY = startY + 54 + (Math.random() * 10);
+      fxContainer.addChild(apple);
+      fallingApples.push(apple);
+    }
+
+    function updateFallingApples() {
+      for (let i = fallingApples.length - 1; i >= 0; i--) {
+        const apple = fallingApples[i];
+        apple.vy += 0.35; // gravity
+        apple.y += apple.vy;
+
+        if (apple.y >= apple.targetY) {
+          apple.y = apple.targetY;
+          // small ground bounce
+          if (apple.vy > 1.2) {
+            apple.vy = -apple.vy * 0.4;
+          } else {
+            // Stay as fallen ground apple for 10 seconds then fade
+            setTimeout(() => {
+              fxContainer.removeChild(apple);
+            }, 10000);
+            fallingApples.splice(i, 1);
+          }
+        }
+      }
+    }
+
+    // ==========================================
+    // ORCHARD WORLD GENERATION
+    // ==========================================
+    const orchardTrees = [];
+    let selectedTreeRef = null;
+
+    function buildOrchardGrid() {
+      // 1. Build Terrain Tiles
+      for (let r = 0; r < ISO_CONFIG.gridRows; r++) {
+        for (let c = 0; c < ISO_CONFIG.gridCols; c++) {
+          const tile = createIsometricTile(c, r);
+          terrainContainer.addChild(tile);
+        }
+      }
+
+      // 2. Plant Apple Trees in orderly agricultural rows (Intensiv-Obstbau layout)
+      let treeId = 1;
+      for (let r = 0; r < ISO_CONFIG.gridRows; r++) {
+        for (let c = 0; c < ISO_CONFIG.gridCols; c++) {
+          // Plant on dedicated tree rows (odd columns are alleys for tractor/monitoring)
+          const isTreeRow = (c % 2 === 1);
+          if (isTreeRow) {
+            const tree = new AppleTree(c, r, treeId++);
+            orchardTrees.push(tree);
+
+            // Add occasional fallen apple underneath
+            if ((c + r) % 3 === 0) {
+              const fallen = createFallenApple();
+              const p = isoToScreen(c, r);
+              fallen.position.set(p.x + (Math.random() * 20 - 10), p.y + (Math.random() * 10 - 2));
+              terrainContainer.addChild(fallen);
+            }
+          }
+        }
+      }
+
+      // Default select first tree
+      if (orchardTrees.length > 0) {
+        selectTree(orchardTrees[0]);
+      }
+
+      initLeaves();
+    }
+
+    function selectTree(tree) {
+      selectedTreeRef = tree;
+      document.getElementById('insp-name').innerText = `Parzelle #${tree.id} – ${tree.treeVariety}`;
+      document.getElementById('insp-pos').innerText = `Gitter [Spalte: ${tree.col}, Reihe: ${tree.row}]`;
+      document.getElementById('insp-apples').innerText = `${tree.appleCount} reife Äpfel`;
+    }
+
+    document.getElementById('btn-shake').addEventListener('click', () => {
+      if (selectedTreeRef) {
+        selectedTreeRef.triggerShake();
+      }
+    });
+
+    // ==========================================
+    // UI CONTROLS & WIND PRESETS
+    // ==========================================
+    const strengthSlider = document.getElementById('slider-strength');
+    const speedSlider = document.getElementById('slider-speed');
+    const waveSlider = document.getElementById('slider-wave');
+
+    const strengthVal = document.getElementById('strength-val');
+    const speedVal = document.getElementById('speed-val');
+    const waveVal = document.getElementById('wave-val');
+    const telemetryWind = document.getElementById('telemetry-wind');
+
+    strengthSlider.addEventListener('input', (e) => {
+      windState.amplitude = parseFloat(e.target.value);
+      strengthVal.innerText = `${windState.amplitude.toFixed(1)}x`;
+      updateTelemetryWind();
+    });
+
+    speedSlider.addEventListener('input', (e) => {
+      windState.baseSpeed = parseFloat(e.target.value);
+      speedVal.innerText = `${windState.baseSpeed.toFixed(1)}x`;
+      updateTelemetryWind();
+    });
+
+    waveSlider.addEventListener('input', (e) => {
+      windState.phaseFactor = parseFloat(e.target.value);
+      waveVal.innerText = windState.phaseFactor < 0.25 ? 'Lang' : (windState.phaseFactor > 0.5 ? 'Kurz' : 'Normal');
+    });
+
+    function updateTelemetryWind() {
+      const speedKmH = (windState.baseSpeed * windState.amplitude * 4.2).toFixed(1);
+      telemetryWind.innerText = `${speedKmH} m/s (NW)`;
+    }
+
+    // Presets buttons
+    const presetBtns = document.querySelectorAll('.btn-preset');
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        presetBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const type = btn.getAttribute('data-preset');
+        if (type === 'gentle') {
+          windState.baseSpeed = 0.6;
+          windState.amplitude = 0.5;
+        } else if (type === 'moderate') {
+          windState.baseSpeed = 1.0;
+          windState.amplitude = 1.2;
+        } else if (type === 'gale') {
+          windState.baseSpeed = 1.8;
+          windState.amplitude = 2.4;
+        }
+        strengthSlider.value = windState.amplitude;
+        speedSlider.value = windState.baseSpeed;
+        strengthVal.innerText = `${windState.amplitude.toFixed(1)}x`;
+        speedVal.innerText = `${windState.baseSpeed.toFixed(1)}x`;
+        updateTelemetryWind();
+      });
+    });
+
+    // ==========================================
+    // MAIN RENDER LOOP (60 FPS)
+    // ==========================================
+    let fpsFrames = 0;
+    let fpsPrevTime = performance.now();
+    const fpsCounterEl = document.getElementById('fps-counter');
+
+    app.ticker.add((delta) => {
+      windState.globalTime += delta * 0.016;
+      const t = windState.globalTime;
+
+      // Update all orchard trees
+      for (let i = 0; i < orchardTrees.length; i++) {
+        orchardTrees[i].update(t, delta);
+      }
+
+      // Update floating leaves and apples
+      updateLeaves(t);
+      updateFallingApples();
+
+      // FPS Monitoring
+      fpsFrames++;
+      const now = performance.now();
+      if (now - fpsPrevTime >= 1000) {
+        const fps = Math.round((fpsFrames * 1000) / (now - fpsPrevTime));
+        fpsCounterEl.innerText = `${fps} FPS`;
+        fpsFrames = 0;
+        fpsPrevTime = now;
+      }
+    });
+
+    // Initialize Orchard
+    buildOrchardGrid();
+    updateTelemetryWind();
+  </script>
+</body>
+</html>
